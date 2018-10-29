@@ -4,6 +4,11 @@ version = "0.1.0"
 authors = ["Lain-dono <lain.dono@gmail.com>"]
 edition = "2018"
 
+description = "KISS 2d graphics engine"
+repository = "https://github.com/oniproject/kiss2d"
+readme = "README.md"
+license = "MIT/Apache-2.0"
+
 [dependencies]
 minifb = "0.11"
 bresenham = "0.1"
