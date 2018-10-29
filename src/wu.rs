@@ -59,11 +59,6 @@ pub fn clipped<F>(mut x1: isize, mut y1: isize, mut x2: isize, mut y2: isize, w:
 pub fn aaline<F>(x1: isize, y1: isize, x2: isize, y2: isize, mut plot: F)
     where F: FnMut(isize, isize, f64)
 {
-    if x1.abs() > 90000 { return }
-    if x2.abs() > 90000 { return }
-    if y1.abs() > 90000 { return }
-    if y2.abs() > 90000 { return }
-
     let (mut x1, mut y1) = (x1 as f64, y1 as f64);
     let (mut x2, mut y2) = (x2 as f64, y2 as f64);
     let dx = x2 - x1;
