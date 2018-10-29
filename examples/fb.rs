@@ -48,7 +48,7 @@ fn main() -> minifb::Result<()> {
         frame += 1;
         if elapsed >= Duration::from_secs(1) {
             let n = duration_to_secs(elapsed) / frame as f32;
-            text = format!("FPS: {}, ms: {:?}", frame, secs_to_duration(n));
+            text = format!("FPS: {}\nms: {:?}", frame, secs_to_duration(n));
             time += elapsed;
             frame = 0;
         }

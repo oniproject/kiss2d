@@ -1,19 +1,20 @@
 #![feature(int_to_from_bytes)]
 
 pub use minifb;
-pub use bresenham;
 pub use rusttype;
 pub use image;
 
 pub mod meter;
+pub mod wu;
 
 use minifb::{Window, MouseMode};
-use bresenham::{Point, Bresenham};
 use rusttype::{point, Scale};
 use image::{Bgra, Pixel};
 
 pub use minifb::{Key, MouseButton, CursorStyle};
 pub use rusttype::Font;
+
+pub type Point = (isize, isize);
 
 pub struct Canvas {
     buffer: Vec<u32>,
@@ -99,12 +100,14 @@ impl Canvas {
     pub fn line(&mut self, start: Point, end: Point, color: u32) {
         let (w, h) = self.size();
         let (w, h) = (w as isize, h as isize);
-        for (x, y) in Bresenham::new(start, end) {
+        let (x1, y1) = (start.0 as f64, start.1 as f64);
+        let (x2, y2) = (end.0 as f64, end.1 as f64);
+        wu::aaline(x1, y1, x2, y2, |x, y, v| {
             if x >= 0 && x < w && y >= 0 && y < h {
                 let idx = (x + y * w) as usize;
-                unsafe { *self.buffer.get_unchecked_mut(idx) = color; }
+                unsafe { self.blend(idx, color, (v * 255.0) as u8) }
             }
-        }
+        })
     }
 
     pub fn hline(&mut self, x1: isize, x2: isize, y: isize, color: u32) {
@@ -135,35 +138,42 @@ impl Canvas {
         }
     }
 
+    unsafe fn blend(&mut self, idx: usize, color: u32, a: u8) {
+        let pixel = self.buffer.get_unchecked_mut(idx);
+
+        let mut src = Bgra { data: color.to_le_bytes() };
+        let mut dst = Bgra { data: pixel.to_le_bytes() };
+
+        src[3] = a;
+        dst[3] = 0xFF;
+
+        dst.blend(&src);
+
+        *pixel = u32::from_le_bytes(dst.data);
+    }
+
     pub fn text(&mut self, font: &Font, scale: f32, pos: (f32, f32), color: u32, text: &str) {
         let scale = Scale::uniform(scale);
         let v_metrics = font.v_metrics(scale);
-        let glyphs: Vec<_> = font
-            .layout(text, scale, point(pos.0, pos.1 + v_metrics.ascent))
-            .collect();
-
         let (w, h) = self.size();
 
-        for glyph in glyphs {
-            if let Some(bbox) = glyph.pixel_bounding_box() {
-                glyph.draw(|x, y, v| {
-                    let x = (x + bbox.min.x as u32) as usize;
-                    let y = (y + bbox.min.y as u32) as usize;
-                    if v != 0.0 && x < w && y < h {
-                        let idx = x + y * w;
-                        let pixel = unsafe { self.buffer.get_unchecked_mut(idx) };
+        for (line, text) in text.lines().enumerate() {
+            let glyphs: Vec<_> = font
+                .layout(text, scale, point(pos.0, pos.1 + v_metrics.ascent + v_metrics.ascent * line as f32))
+                .collect();
 
-                        let mut src = Bgra { data: color.to_le_bytes() };
-                        let mut dst = Bgra { data: pixel.to_le_bytes() };
-
-                        src[3] = (v * 255.0) as u8;
-                        dst[3] = 0xFF;
-
-                        dst.blend(&src);
-
-                        *pixel = u32::from_le_bytes(dst.data);
-                    }
-                });
+            for glyph in glyphs {
+                if let Some(bbox) = glyph.pixel_bounding_box() {
+                    glyph.draw(|x, y, v| {
+                        let x = (x + bbox.min.x as u32) as usize;
+                        let y = (y + bbox.min.y as u32) as usize;
+                        if v != 0.0 && x < w && y < h {
+                            unsafe {
+                                self.blend(x + y * w, color, (v * 255.0) as u8);
+                            }
+                        }
+                    });
+                }
             }
         }
     }
