@@ -1,4 +1,4 @@
-#![feature(int_to_from_bytes)]
+#![feature(int_to_from_bytes, decl_macro)]
 
 pub use minifb;
 pub use rusttype;
@@ -79,7 +79,11 @@ impl Canvas {
     }
 
     pub fn clear(&mut self) {
-        self.buffer.iter_mut().for_each(|i| *i = 0);
+        self.fill(0);
+    }
+
+    pub fn fill(&mut self, color: u32) {
+        self.buffer.iter_mut().for_each(|i| *i = color);
     }
 
     pub fn pixel_mut(&mut self, x: usize, y: usize) -> &mut u32 {
@@ -100,9 +104,7 @@ impl Canvas {
     pub fn line(&mut self, start: Point, end: Point, color: u32) {
         let (w, h) = self.size();
         let (w, h) = (w as isize, h as isize);
-        let (x1, y1) = (start.0 as f64, start.1 as f64);
-        let (x2, y2) = (end.0 as f64, end.1 as f64);
-        wu::aaline(x1, y1, x2, y2, |x, y, v| {
+        wu::clipped_aaline(start, end, (w, h), |x, y, v| {
             if x >= 0 && x < w && y >= 0 && y < h {
                 let idx = (x + y * w) as usize;
                 unsafe { self.blend(idx, color, (v * 255.0) as u8) }
