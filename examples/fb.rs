@@ -1,7 +1,7 @@
 //extern crate minifb;
 #![feature(int_to_from_bytes)]
 
-use kiss2d::{Canvas, Font, Key, MouseMode, meter::Meter};
+use kiss2d::{Canvas, Font, Key, meter::Meter};
 use kiss2d::clrs::*;
 
 use std::time::{Instant, Duration};
@@ -53,7 +53,7 @@ fn main() -> minifb::Result<()> {
             frame = 0;
         }
 
-        for i in canvas.buffer().iter_mut() {
+        for i in canvas.buffer_mut().iter_mut() {
             let n = noise.take() & 0b01_1111;
             *i = n << 16 | n << 8 | n;
         }
@@ -68,9 +68,11 @@ fn main() -> minifb::Result<()> {
         }
 
         canvas.udpate();
-        if let Some(mouse) = canvas.window().get_mouse_pos(MouseMode::Clamp) {
+
+        if let Some(mouse) = canvas.mouse_pos() {
             let mouse = (mouse.0 as isize, mouse.1 as isize);
-            canvas.line((0, 0), mouse, RED);
+            let center = (WIDTH as isize / 2, HEIGHT as isize / 2);
+            canvas.line(center, mouse, RED);
         }
 
         canvas.keys(|t| match t {

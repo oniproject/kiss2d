@@ -7,18 +7,28 @@ pub use image;
 
 pub mod meter;
 
-use minifb::{Window};
+use minifb::{Window, MouseMode};
 use bresenham::{Point, Bresenham};
 use rusttype::{point, Scale};
 use image::{Bgra, Pixel};
 
-pub use minifb::{Key, MouseMode};
+pub use minifb::{Key, MouseButton, CursorStyle};
 pub use rusttype::Font;
 
 pub struct Canvas {
     buffer: Vec<u32>,
     window: Window,
     size: (usize, usize),
+}
+
+impl std::ops::Deref for Canvas {
+    type Target = [u32];
+    fn deref(&self) -> &[u32] { &self.buffer }
+}
+
+impl std::ops::DerefMut for Canvas {
+    type Target = [u32];
+    fn deref_mut(&mut self) -> &mut [u32] { &mut self.buffer }
 }
 
 impl Canvas {
@@ -30,15 +40,33 @@ impl Canvas {
     }
 
     pub fn window(&self) -> &Window { &self.window }
-    pub fn buffer(&mut self) -> &mut [u32] { &mut self.buffer }
+    pub fn window_mut(&mut self) -> &mut Window { &mut self.window }
+    pub fn buffer(&self) -> &[u32] { &self.buffer }
+    pub fn buffer_mut(&mut self) -> &mut [u32] { &mut self.buffer }
     pub fn size(&self) -> (usize, usize) { self.size }
 
     pub fn is_open(&self) -> bool { self.window.is_open() }
     pub fn is_keydown(&self, key: Key) -> bool { self.window.is_key_down(key) }
 
+    pub fn set_cursor_style(&mut self, cursor: CursorStyle) {
+        self.window.set_cursor_style(cursor)
+    }
+
     pub fn keys<F: FnMut(Key)>(&self, f: F) {
         self.window.get_keys()
             .map(|mut keys| keys.drain(..).for_each(f));
+    }
+
+    pub fn mouse_pos(&self) -> Option<(f32, f32)> {
+        self.window.get_mouse_pos(MouseMode::Pass)
+    }
+
+    pub fn mouse_down(&self, button: MouseButton) -> bool {
+        self.window.get_mouse_down(button)
+    }
+
+    pub fn mouse_wheel(&self) -> Option<(f32, f32)> {
+        self.window.get_scroll_wheel()
     }
 
     pub fn udpate(&mut self) {
