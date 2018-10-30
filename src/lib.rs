@@ -10,6 +10,7 @@ pub mod wu;
 pub mod image;
 pub mod vg;
 pub mod clrs;
+pub mod geom;
 
 use minifb::{Window, MouseMode};
 use rusttype::{point, Scale};
@@ -158,11 +159,8 @@ impl Canvas {
         let (w, h) = self.size();
 
         for (line, text) in text.lines().enumerate() {
-            let glyphs: Vec<_> = font
-                .layout(text, scale, point(pos.0, pos.1 + v_metrics.ascent + v_metrics.ascent * line as f32))
-                .collect();
-
-            for glyph in glyphs {
+            let point = point(pos.0, pos.1 + v_metrics.ascent * (line + 1) as f32);
+            for glyph in font.layout(text, scale, point) {
                 if let Some(bbox) = glyph.pixel_bounding_box() {
                     glyph.draw(|x, y, v| {
                         let x = (x + bbox.min.x as u32) as usize;
