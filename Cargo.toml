@@ -1,6 +1,6 @@
 [package]
 name = "kiss2d"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["Lain-dono <lain.dono@gmail.com>"]
 edition = "2018"
 
