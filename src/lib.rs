@@ -1,15 +1,20 @@
-#![feature(int_to_from_bytes, decl_macro)]
+#![feature(int_to_from_bytes, decl_macro, non_ascii_idents)]
 
 pub use minifb;
 pub use rusttype;
-pub use image;
+//pub use image as ximage;
+pub extern crate image as ximage;
 
 pub mod meter;
 pub mod wu;
+pub mod image;
+pub mod vg;
 
 use minifb::{Window, MouseMode};
 use rusttype::{point, Scale};
-use image::{Bgra, Pixel};
+use self::ximage::{Bgra, Pixel};
+
+use self::image::{Rectangle, RGBA};
 
 pub use minifb::{Key, MouseButton, CursorStyle};
 pub use rusttype::Font;
@@ -44,6 +49,13 @@ impl Canvas {
     pub fn window_mut(&mut self) -> &mut Window { &mut self.window }
     pub fn buffer(&self) -> &[u32] { &self.buffer }
     pub fn buffer_mut(&mut self) -> &mut [u32] { &mut self.buffer }
+
+    pub fn image_mut(&mut self) -> RGBA {
+        let (w, h) = self.size;
+        let r = Rectangle::from_size(w as isize, h as isize);
+        RGBA::from_buf32(&mut self.buffer, r)
+    }
+
     pub fn size(&self) -> (usize, usize) { self.size }
 
     pub fn is_open(&self) -> bool { self.window.is_open() }
