@@ -3,16 +3,16 @@
 pub use minifb;
 pub use rusttype;
 //pub use image as ximage;
-pub extern crate image as ximage;
+//pub extern crate image as ximage;
 
 pub mod meter;
 pub mod wu;
 pub mod image;
 pub mod vg;
+pub mod clrs;
 
 use minifb::{Window, MouseMode};
 use rusttype::{point, Scale};
-use self::ximage::{Bgra, Pixel};
 
 use self::image::{Rectangle, RGBA};
 
@@ -119,7 +119,7 @@ impl Canvas {
         wu::clipped_aaline(start, end, (w, h), |x, y, v| {
             if x >= 0 && x < w && y >= 0 && y < h {
                 let idx = (x + y * w) as usize;
-                unsafe { self.blend(idx, color, (v * 255.0) as u8) }
+                unsafe { self.blend(idx, color, v as f32) }
             }
         })
     }
@@ -152,20 +152,6 @@ impl Canvas {
         }
     }
 
-    unsafe fn blend(&mut self, idx: usize, color: u32, a: u8) {
-        let pixel = self.buffer.get_unchecked_mut(idx);
-
-        let mut src = Bgra { data: color.to_le_bytes() };
-        let mut dst = Bgra { data: pixel.to_le_bytes() };
-
-        src[3] = a;
-        dst[3] = 0xFF;
-
-        dst.blend(&src);
-
-        *pixel = u32::from_le_bytes(dst.data);
-    }
-
     pub fn text(&mut self, font: &Font, scale: f32, pos: (f32, f32), color: u32, text: &str) {
         let scale = Scale::uniform(scale);
         let v_metrics = font.v_metrics(scale);
@@ -183,7 +169,7 @@ impl Canvas {
                         let y = (y + bbox.min.y as u32) as usize;
                         if v != 0.0 && x < w && y < h {
                             unsafe {
-                                self.blend(x + y * w, color, (v * 255.0) as u8);
+                                self.blend(x + y * w, color, v);
                             }
                         }
                     });
@@ -221,27 +207,34 @@ impl Canvas {
             self.line(base, first, color);
         }
     }
-}
 
-pub mod clrs {
-    #![allow(clippy::unreadable_literal)]
+    unsafe fn blend(&mut self, idx: usize, color: u32, alpha: f32) {
+        // http://stackoverflow.com/questions/7438263/alpha-compositing-algorithm-blend-modes#answer-11163848
+        const MAX_T: f32 = 255.0;
 
-    // from http://clrs.cc/
-    pub const NAVY: u32    = 0x001F3F;
-    pub const BLUE: u32    = 0x0074D9;
-    pub const AQUA: u32    = 0x7FDBFF;
-    pub const TEAL: u32    = 0x39CCCC;
-    pub const OLIVE: u32   = 0x3D9970;
-    pub const GREEN: u32   = 0x2ECC40;
-    pub const LIME: u32    = 0x01FF70;
-    pub const YELLOW: u32  = 0xFFDC00;
-    pub const ORANGE: u32  = 0xFF851B;
-    pub const RED: u32     = 0xFF4136;
-    pub const MAROON: u32  = 0x85144B;
-    pub const FUCHSIA: u32 = 0xF012BE;
-    pub const PURPLE: u32  = 0xB10DC9;
-    pub const BLACK: u32   = 0x111111;
-    pub const GRAY: u32    = 0xAAAAAA;
-    pub const SILVER: u32  = 0xDDDDDD;
-    pub const WHITE: u32   = 0xFFFFFF;
+        let pixel = self.buffer.get_unchecked_mut(idx);
+
+        let [db, dg, dr, _] = pixel.to_le_bytes();
+        let [sb, sg, sr, _] = color.to_le_bytes();
+        let (dr, dg, db) = (
+            dr as f32 / MAX_T,
+            dg as f32 / MAX_T,
+            db as f32 / MAX_T,
+        );
+        let (sr, sg, sb) = (
+            sr as f32 / MAX_T,
+            sg as f32 / MAX_T,
+            sb as f32 / MAX_T,
+        );
+
+        let inv_alpha = 1.0 - alpha;
+        let (r, g, b) = (
+            ((sr * alpha + dr * inv_alpha) * MAX_T) as u8,
+            ((sg * alpha + dg * inv_alpha) * MAX_T) as u8,
+            ((sb * alpha + db * inv_alpha) * MAX_T) as u8,
+        );
+
+        // Cast back to our initial type on return
+        *pixel = u32::from_le_bytes([b, g, r, 0xFF]);
+    }
 }
