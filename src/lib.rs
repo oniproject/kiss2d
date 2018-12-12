@@ -34,7 +34,6 @@ impl std::ops::Deref for Canvas {
 }
 
 impl std::ops::DerefMut for Canvas {
-    type Target = [u32];
     fn deref_mut(&mut self) -> &mut [u32] { &mut self.buffer }
 }
 
